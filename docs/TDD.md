@@ -15,9 +15,9 @@ Typical user should be able to:
 
 ## Proposed solution
 
-### CLI
+### Default CLI program
 
-This program should accept only one argument which is a file path. Nevertheless there should be a way to increase verbosity of a program.
+Default program should accept only one argument which is a file path. Nevertheless there should be a way to increase verbosity of a program.
 This could be achived by running program with env variable `RUST_LOG=DEBUG` to allow debug level logs be printed in std out.
 
 In first step program should verify whether file exists and is in valid UTF-8 format.
@@ -31,6 +31,10 @@ Data should be keep in HashMap, with a Key as accountId.
 * Prepare typical data set(or script which will generate those)
 * Provide automated tests
 * Provide unit tests
+
+### Secondary CLI program
+
+This program should generate data(fake transactions) to provide an input for `default` one. 
 
 ### Example usage:
 

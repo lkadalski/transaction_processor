@@ -1,23 +1,36 @@
+use std::{collections::HashMap, sync::Arc};
+
+use rust_decimal::Decimal;
 use serde::Serialize;
 
-#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub mod handler;
+type DataSource = Arc<HashMap<ClientId, Transaction>>;
+#[derive(
+    Serialize, Debug, Clone, Copy, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 /// Uniquely identifies a Deposit or Withdraw transaction.
 pub struct TransactionId(pub u32);
-#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Serialize, Debug, serde::Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 /// Uniquely identifies a Client.
-pub struct ClientId(pub u32);
+pub struct ClientId(pub u16);
 /// Represents an input transaction line in the input csv.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, serde::Deserialize, PartialEq, Serialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
 pub enum Transaction {
     Deposit {
         client: ClientId,
         tx: TransactionId,
-        amount: f64,
+        #[serde(with = "rust_decimal::serde::float")]
+        amount: Decimal,
     },
     Withdrawal {
         client: ClientId,
         tx: TransactionId,
-        amount: f64,
+        #[serde(with = "rust_decimal::serde::float")]
+        amount: Decimal,
     },
     Dispute {
         client: ClientId,

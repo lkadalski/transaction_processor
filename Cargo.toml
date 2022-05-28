@@ -1,5 +1,5 @@
 [package]
-name = "calculator"
+name = "transaction_processor"
 version = "0.1.0"
 edition = "2021"
 default-run = "transaction_processor"
@@ -11,12 +11,14 @@ clap ={ version="3.1.18", features = ["derive"]}
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0.137", features = ["derive"] }
 csv-async = { version="1.2.4", features=["tokio", "with_serde"] }
-
-rand = { version = "0.3", optional=true}
-csv = {version ="1.1.6", optional=true}
+anyhow = "1.0"
+rust_decimal = {version = "1.23.1", features=["serde-float", "serde-with-float"]}
+rand = { version = "0.8.5", optional=true}
+csv = "1.1"
 
 [features]
-generate = ["rand", "csv"]
+default = ["generate"]
+generate = ["rand"]
 
 [dev-dependencies]
 assert_cmd = "2.0.4"
