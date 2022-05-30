@@ -17,8 +17,8 @@ pub struct TransactionId(pub u32);
 pub struct ClientId(pub u16);
 /// Represents an input transaction line in the input csv.
 #[derive(Debug, Clone, serde::Deserialize, PartialEq, Serialize)]
-#[serde(tag = "type")]
 #[serde(rename_all = "lowercase")]
+#[serde(tag = "type")]
 pub enum Transaction {
     Deposit {
         client: ClientId,

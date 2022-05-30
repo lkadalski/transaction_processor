@@ -1,8 +1,8 @@
 use anyhow::Result;
-use calculator::{ClientId, Transaction, TransactionId};
 use clap::Parser;
 use rand::prelude::*;
 use rust_decimal::{prelude::FromPrimitive, Decimal};
+use transaction_processor::{ClientId, Transaction, TransactionId};
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Arguments {
@@ -11,17 +11,18 @@ struct Arguments {
 }
 #[cfg(feature = "generate")]
 fn main() -> Result<()> {
+    //TODO Add tokio runtime, make it async, checkout serialization
     let args = Arguments::parse();
     let mut rng = rand::thread_rng();
-    let mut wtr = csv::WriterBuilder::new()
+    let mut wtr = csv_async::AsyncWriterBuilder::new()
         .flexible(true)
-        .from_writer(std::io::stdout());
+        .create_serializer(tokio::io::stdout());
     let mut transactions = vec![];
     let mut client_id = 2_u16;
     let mut tx_id = 1u32;
     let mut clients = vec![ClientId(1_u16)];
     for _record in 0..args.record_count {
-        let generated_transaction = match rng.gen_range(0..100) {
+        let generated_transaction = match rng.gen_range(0u16..100) {
             0..=25 => {
                 let client = if rng.gen_bool(0.2) {
                     let client = ClientId(client_id);
