@@ -10,7 +10,10 @@ struct Arguments {
     record_count: u32,
 }
 #[cfg(feature = "generate")]
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
+    use transaction_processor::TransactionType;
+
     //TODO Add tokio runtime, make it async, checkout serialization
     let args = Arguments::parse();
     let mut rng = rand::thread_rng();
@@ -37,7 +40,8 @@ fn main() -> Result<()> {
                 tx_id += 1;
                 transactions.push((tx, client));
 
-                Transaction::Deposit {
+                Transaction {
+                    ttype: TransactionType::Deposit,
                     client,
                     tx,
                     amount: generate_decimal(&mut rng),
@@ -49,7 +53,8 @@ fn main() -> Result<()> {
 
                 let client = clients[rng.gen_range(0..clients.len())];
 
-                Transaction::Withdrawal {
+                Transaction {
+                    ttype: TransactionType::Withdrawal,
                     client,
                     tx,
                     amount: generate_decimal(&mut rng),
@@ -61,7 +66,12 @@ fn main() -> Result<()> {
                 }
                 let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
-                Transaction::Dispute { client, tx }
+                Transaction {
+                    ttype: TransactionType::Dispute,
+                    client,
+                    tx,
+                    amount: None,
+                }
             }
             71..=98 => {
                 if transactions.is_empty() {
@@ -69,7 +79,12 @@ fn main() -> Result<()> {
                 }
                 let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
-                Transaction::Resolve { client, tx }
+                Transaction {
+                    ttype: TransactionType::Resolve,
+                    client,
+                    tx,
+                    amount: None,
+                }
             }
             // Low probability because with enough transactions, most users were ending up in the locked state.
             // which makes sense.
@@ -79,18 +94,21 @@ fn main() -> Result<()> {
                 }
                 let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
-                Transaction::ChargeBack { client, tx }
+                Transaction {
+                    ttype: TransactionType::ChargeBack,
+                    client,
+                    tx,
+                    amount: None,
+                }
             }
             _ => unreachable!(),
         };
-        wtr.serialize(generated_transaction)?;
-        wtr.flush()?;
+        wtr.serialize(generated_transaction).await?;
+        wtr.flush().await?;
     }
     Ok(())
 }
 
-fn generate_decimal(rng: &mut ThreadRng) -> rust_decimal::Decimal {
-    Decimal::from_f64(rng.gen_range(0.0_f64..1000.0))
-        .unwrap()
-        .round_dp(4)
+fn generate_decimal(rng: &mut ThreadRng) -> Option<rust_decimal::Decimal> {
+    Decimal::from_f64(rng.gen_range(0.0_f64..1000.0)).map(|num| num.round_dp(4))
 }

@@ -22,15 +22,7 @@ async fn initialize(input: Option<String>) {
 //Handle files or stdin
 //CSV READER
 async fn process(input: Option<String>) -> Result<()> {
-    //potentially could be stdin, TODO
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
-    //decide what input
-    // let reader: Arc<dyn AsyncRead> = match input {
-    //     Some(filename) => Arc::new(<dyn tokio::io::AsyncRead>::new(
-    //         tokio::fs::File::open(filename).await?,
-    //     )),
-    //     None => Arc::new(<dyn tokio::io::AsyncRead>::new(tokio::io::stdin())),
-    // };
     let reader: Box<dyn tokio::io::AsyncBufRead + Send + Unpin> = if let Some(file) = input {
         Box::new(tokio::io::BufReader::new(
             tokio::fs::File::open(file).await?,
@@ -50,12 +42,3 @@ async fn process(input: Option<String>) -> Result<()> {
     //     output::OutputHandler::handle(transaction::TransactionHandler::handle(reader).await?).await;
     Ok(())
 }
-// // async fn process(input: Option<String>) -> Result<()> {
-//     let reader: Box<dyn tokio::io::AsyncBufRead> = match input {
-//         None => Box::new(tokio::io::BufReader::new(tokio::io::stdin())),
-//         Some(filename) => Box::new(tokio::io::BufReader::new(
-//             tokio::fs::File::open(filename).await?,
-//         )),
-//     };
-//     output::OutputHandler::handle(transaction::TransactionHandler::handle(reader).await?).await;
-//     Ok(())
