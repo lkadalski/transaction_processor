@@ -1,28 +1,25 @@
-use std::{pin::Pin, sync::Arc};
-
-use anyhow::Result;
-use futures::{stream::StreamExt, AsyncRead};
-use tokio::io::AsyncBufRead;
-
 use crate::Transaction;
-pub fn handle(input: Option<String>) -> Result<()> {
-    //tokio start
-    let runtime = tokio::runtime::Runtime::new()?;
-    runtime.block_on(initialize(input));
-    //tokio end
-    Ok(())
+use anyhow::Result;
+use futures::stream::StreamExt;
+use tokio::sync::mpsc::{self, Sender};
+/// .
+///
+/// # Errors
+///
+/// This function will return an error if File not exists or could not deserialize record.
+//Handle files or stdin
+pub async fn handle(input: Option<String>) -> Result<mpsc::Receiver<Transaction>> {
+    let (tx, rx) = mpsc::channel(1000);
+    tokio::spawn(async move {
+        if let Err(err) = process(input, tx).await {
+            eprintln!("Could not process input due {err}");
+            std::process::exit(1);
+        }
+    });
+    Ok(rx)
 }
 
-async fn initialize(input: Option<String>) {
-    if let Err(err) = process(input).await {
-        eprintln!("Could not process input due {err}");
-        std::process::exit(1);
-    }
-}
-//Handle files or stdin
-//CSV READER
-async fn process(input: Option<String>) -> Result<()> {
-    let (tx, rx) = tokio::sync::mpsc::channel(1000);
+async fn process(input: Option<String>, tx: Sender<Transaction>) -> Result<()> {
     let reader: Box<dyn tokio::io::AsyncBufRead + Send + Unpin> = if let Some(file) = input {
         Box::new(tokio::io::BufReader::new(
             tokio::fs::File::open(file).await?,
@@ -39,6 +36,5 @@ async fn process(input: Option<String>) -> Result<()> {
         println!("{record:?}");
         tx.send(record).await?;
     }
-    //     output::OutputHandler::handle(transaction::TransactionHandler::handle(reader).await?).await;
     Ok(())
 }

@@ -1,10 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 pub mod handler;
-type DataSource = Arc<HashMap<ClientId, Transaction>>;
+pub type DataSource = HashMap<ClientId, Transaction>;
 #[derive(
     Serialize, Debug, Clone, Copy, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]

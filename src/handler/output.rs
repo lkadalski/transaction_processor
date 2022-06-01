@@ -1,8 +1,12 @@
 use anyhow::Result;
-pub struct OutputHandler {}
-impl OutputHandler {
-    pub(crate) async fn handle(receiver: tokio::sync::mpsc::Receiver<OutputFormat>) -> Result<()> {
-        Ok(())
+use tokio::sync::oneshot::Receiver;
+
+use crate::DataSource;
+
+pub async fn handle(input: Receiver<DataSource>) -> Result<()> {
+    let data = input.await;
+    for entry in &data {
+        println!("{entry:?}");
     }
+    Ok(())
 }
-pub struct OutputFormat {}

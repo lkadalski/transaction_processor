@@ -1,9 +1,17 @@
+use anyhow::Result;
 use std::env;
 use transaction_processor::handler;
-fn main() {
+
+#[tokio::main]
+async fn main() -> Result<()> {
     let input = env::args().nth(1);
-    if let Err(err) = handler::input::handle(input) {
+    if let Err(err) = handler::output::handle(
+        handler::transaction::handle(handler::input::handle(input).await?).await?,
+    )
+    .await
+    {
         eprintln!("Error occured during processing: {err}");
         std::process::exit(1)
     }
+    Ok(())
 }
