@@ -5,8 +5,11 @@ use crate::DataSource;
 
 pub async fn handle(input: Receiver<DataSource>) -> Result<()> {
     let data = input.await;
-    for entry in &data {
-        println!("{entry:?}");
+    let mut serializer =
+        csv_async::AsyncWriterBuilder::new().create_serializer(tokio::io::stdout());
+
+    for entry in data.unwrap().iter() {
+        serializer.serialize(entry).await?;
     }
     Ok(())
 }
