@@ -1,4 +1,4 @@
-use crate::{Data, DataSource};
+use crate::{Account, DataSource};
 use anyhow::Result;
 use rust_decimal::Decimal;
 use tokio::sync::{mpsc::Receiver, oneshot};
@@ -35,7 +35,7 @@ async fn process(
 
 //TODO change println to logs or tracing?
 fn charge_back(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Data>,
+    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
     message: crate::Transaction,
 ) {
     println!("Doing charge back!");
@@ -43,7 +43,7 @@ fn charge_back(
 }
 
 fn resolve(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Data>,
+    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
     message: crate::Transaction,
 ) {
     println!("Doing resolve!");
@@ -51,7 +51,7 @@ fn resolve(
 }
 
 fn dispute(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Data>,
+    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
     message: crate::Transaction,
 ) {
     println!("Doing dispute!");
@@ -59,26 +59,25 @@ fn dispute(
 }
 
 fn withdrawal(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Data>,
-    message: crate::Transaction,
+    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    transaction: crate::Transaction,
 ) {
     println!("Doing withdrawal!");
-    if let Some(account) = data.get_mut(&message.client) {
-        account.withdrawal(message.amount.unwrap());
+    if let Some(account) = data.get_mut(&transaction.client) {
+        account.withdrawal(transaction);
     }
 }
 
 fn deposit(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Data>,
-    message: crate::Transaction,
+    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    transaction: crate::Transaction,
 ) {
     println!("Doing deposit!");
-    if let Some(account) = data.get_mut(&message.client) {
-        account.deposit(message.amount.unwrap());
+    if let Some(account) = data.get_mut(&transaction.client) {
+        account.deposit(transaction);
     } else {
-        data.insert(
-            message.client,
-            Data::new(message.amount.unwrap(), message.client),
-        );
+        let mut account = Account::new(transaction.client);
+        account.deposit(transaction);
+        data.insert(account.client_id, account);
     }
 }
