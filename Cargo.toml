@@ -13,9 +13,8 @@ serde = { version = "1.0.137", features = ["derive"] }
 csv-async = { version="1.2.4", features=["tokio", "with_serde"] }
 futures = "0.3.21"
 anyhow = "1.0"
-rust_decimal = {version = "1.23.1", features=["serde-float", "serde-with-float"]}
+rust_decimal = {version = "1.24", features=["serde-str"]}
 rand = { version = "0.8.5", optional=true}
-csv = "1.1"
 
 [features]
 default = ["generate"]

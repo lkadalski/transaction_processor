@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
                 transactions.push((tx, client));
 
                 Transaction {
-                    ttype: TransactionType::Deposit,
+                    tx_type: TransactionType::Deposit,
                     client,
                     tx,
                     amount: generate_decimal(&mut rng),
@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
                 let client = clients[rng.gen_range(0..clients.len())];
 
                 Transaction {
-                    ttype: TransactionType::Withdrawal,
+                    tx_type: TransactionType::Withdrawal,
                     client,
                     tx,
                     amount: generate_decimal(&mut rng),
@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
                 let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
                 Transaction {
-                    ttype: TransactionType::Dispute,
+                    tx_type: TransactionType::Dispute,
                     client,
                     tx,
                     amount: None,
@@ -80,7 +80,7 @@ async fn main() -> Result<()> {
                 let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
                 Transaction {
-                    ttype: TransactionType::Resolve,
+                    tx_type: TransactionType::Resolve,
                     client,
                     tx,
                     amount: None,
@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
                 let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
                 Transaction {
-                    ttype: TransactionType::ChargeBack,
+                    tx_type: TransactionType::ChargeBack,
                     client,
                     tx,
                     amount: None,
