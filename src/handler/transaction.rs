@@ -1,4 +1,4 @@
-use crate::{Account, DataSource};
+use crate::{handler::Account, handler::DataSource, ClientId};
 use anyhow::Result;
 
 use tokio::sync::{mpsc::Receiver, oneshot};
@@ -11,7 +11,7 @@ pub async fn handle(
     let (tx, rx) = oneshot::channel();
     tokio::spawn(async move {
         if let Err(err) = process(input, tx).await {
-            eprintln!("Could not process transaction due {err}");
+            log::error!("Could not process transaction due {err}");
             std::process::exit(1)
         }
     });
@@ -44,54 +44,55 @@ async fn process(
         })
         .collect();
     drop(data);
-    println!("Total {} records", records.len());
+    log::info!("Total {} records", records.len());
     tx.send(records).unwrap();
     Ok(())
 }
 
-//TODO change println to logs or tracing?
 fn charge_back(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    data: &mut std::collections::HashMap<ClientId, Account>,
     transaction: crate::Transaction,
 ) {
-    println!("Doing charge back!");
-    if let Some(account) = data.get_mut(&transaction.client) {
-        account.resolve(transaction);
+    log::info!("Doing charge back!");
+    if let Some(account) = data.get_mut(&transaction.client_id) {
+        account.charge_back(transaction);
+    } else {
+        log::error!("There is not client with {transaction:?}");
     }
     // data.insert(message.client, message);
 }
 
 fn resolve(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    data: &mut std::collections::HashMap<ClientId, Account>,
     transaction: crate::Transaction,
 ) {
-    println!("Doing resolve!");
-    if let Some(account) = data.get_mut(&transaction.client) {
+    log::info!("Doing resolve!");
+    if let Some(account) = data.get_mut(&transaction.client_id) {
         account.resolve(transaction);
     }
     // data.insert(message.client, message);
 }
 
 fn dispute(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    data: &mut std::collections::HashMap<ClientId, Account>,
     transaction: crate::Transaction,
 ) {
-    println!("Doing dispute!");
-    if let Some(account) = data.get_mut(&transaction.client) {
+    log::info!("Doing dispute!");
+    if let Some(account) = data.get_mut(&transaction.client_id) {
         account.dispute(transaction);
     }
     // data.insert(message.client, message);
 }
 
 fn withdrawal(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    data: &mut std::collections::HashMap<ClientId, Account>,
     transaction: crate::Transaction,
 ) {
-    println!("Doing withdrawal!");
-    if let Some(account) = data.get_mut(&transaction.client) {
+    log::info!("Doing withdrawal!");
+    if let Some(account) = data.get_mut(&transaction.client_id) {
         account.withdrawal(transaction);
     } else {
-        let client = transaction.client;
+        let client = transaction.client_id;
         let mut account = Account::new();
         account.withdrawal(transaction);
         data.insert(client, account);
@@ -99,14 +100,14 @@ fn withdrawal(
 }
 
 fn deposit(
-    data: &mut std::collections::HashMap<crate::ClientId, crate::Account>,
+    data: &mut std::collections::HashMap<ClientId, Account>,
     transaction: crate::Transaction,
 ) {
-    println!("Doing deposit!");
-    if let Some(account) = data.get_mut(&transaction.client) {
+    log::info!("Doing deposit!");
+    if let Some(account) = data.get_mut(&transaction.client_id) {
         account.deposit(transaction);
     } else {
-        let client = transaction.client;
+        let client = transaction.client_id;
         let mut account = Account::new();
         account.deposit(transaction);
         data.insert(client, account);

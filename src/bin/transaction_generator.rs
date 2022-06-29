@@ -14,49 +14,51 @@ struct Arguments {
 async fn main() -> Result<()> {
     use transaction_processor::TransactionType;
 
-    //TODO Add tokio runtime, make it async, checkout serialization
     let args = Arguments::parse();
     let mut rng = rand::thread_rng();
     let mut wtr = csv_async::AsyncWriterBuilder::new()
         .flexible(true)
         .create_serializer(tokio::io::stdout());
     let mut transactions = vec![];
-    let mut client_id = 2_u16;
+    let mut last_client_id = 1_u16;
+    let mut last_disputed = 1u32;
+    let mut last_disputed_client_id = 1u16;
     let mut tx_id = 1u32;
-    let mut clients = vec![ClientId(1_u16)];
+    let mut clients = vec![last_client_id];
     for _record in 0..args.record_count {
         let generated_transaction = match rng.gen_range(0u16..100) {
             0..=25 => {
                 let client = if rng.gen_bool(0.2) {
-                    let client = ClientId(client_id);
+                    let mut client = last_client_id;
+                    client += 1;
                     clients.push(client);
-                    client_id += 1;
                     client
                 } else {
                     clients[rng.gen_range(0..clients.len())]
                 };
 
-                let tx = TransactionId(tx_id);
+                let transaction_id = tx_id;
                 tx_id += 1;
-                transactions.push((tx, client));
+                last_client_id = client;
+                transactions.push((transaction_id, client));
 
                 Transaction {
                     tx_type: TransactionType::Deposit,
-                    client,
-                    tx,
+                    client_id: client,
+                    transaction_id,
                     amount: generate_decimal(&mut rng),
                 }
             }
             26..=50 => {
-                let tx = TransactionId(tx_id);
+                let transaction_id = tx_id;
                 tx_id += 1;
 
                 let client = clients[rng.gen_range(0..clients.len())];
 
                 Transaction {
                     tx_type: TransactionType::Withdrawal,
-                    client,
-                    tx,
+                    client_id: client,
+                    transaction_id,
                     amount: generate_decimal(&mut rng),
                 }
             }
@@ -64,40 +66,38 @@ async fn main() -> Result<()> {
                 if transactions.is_empty() {
                     continue;
                 }
-                let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
-
+                let (transaction_id, client) = transactions[rng.gen_range(0..transactions.len())];
+                last_disputed = transaction_id;
+                last_disputed_client_id = client;
                 Transaction {
                     tx_type: TransactionType::Dispute,
-                    client,
-                    tx,
+                    client_id: client,
+                    transaction_id,
                     amount: None,
                 }
             }
-            71..=98 => {
+            71..=95 => {
                 if transactions.is_empty() {
                     continue;
                 }
-                let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
 
                 Transaction {
                     tx_type: TransactionType::Resolve,
-                    client,
-                    tx,
+                    client_id: last_disputed_client_id,
+                    transaction_id: last_disputed,
                     amount: None,
                 }
             }
             // Low probability because with enough transactions, most users were ending up in the locked state.
             // which makes sense.
-            99..=100 => {
+            96..=100 => {
                 if transactions.is_empty() {
                     continue;
                 }
-                let (tx, client) = transactions[rng.gen_range(0..transactions.len())];
-
                 Transaction {
                     tx_type: TransactionType::ChargeBack,
-                    client,
-                    tx,
+                    client_id: last_disputed_client_id,
+                    transaction_id: last_disputed,
                     amount: None,
                 }
             }

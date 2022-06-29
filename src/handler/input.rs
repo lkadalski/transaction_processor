@@ -3,11 +3,11 @@ use anyhow::Result;
 use futures::stream::StreamExt;
 use tokio::sync::mpsc::{self, Sender};
 /// .
+/// Handle files or stdin
 ///
 /// # Errors
 ///
 /// This function will return an error if File not exists or could not deserialize record.
-//Handle files or stdin
 pub async fn handle(input: Option<String>) -> Result<mpsc::Receiver<Transaction>> {
     let (tx, rx) = mpsc::channel(1000);
     tokio::spawn(async move {
@@ -33,7 +33,6 @@ async fn process(input: Option<String>, tx: Sender<Transaction>) -> Result<()> {
     let mut records = csv_reader.deserialize();
     while let Some(record) = records.next().await {
         let record: Transaction = record?;
-        println!("{record:?}");
         tx.send(record).await?;
     }
     Ok(())

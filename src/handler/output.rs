@@ -1,6 +1,4 @@
 use anyhow::Result;
-
-use serde::Serialize;
 use tokio::sync::oneshot::Receiver;
 
 use super::AccountSummary;
@@ -12,9 +10,9 @@ pub async fn handle(input: Receiver<Vec<AccountSummary>>) -> Result<()> {
         .has_headers(true)
         .create_serializer(tokio::io::stdout());
     for record in data {
-        match serializer.serialize(record).await {
-            Ok(var) => {
-                println!("Serialized {var:?}");
+        match serializer.serialize(&record).await {
+            Ok(_var) => {
+                // println!("Serialized {var:?}");
             }
             Err(err) => eprintln!("Errorek {err}"),
         };
