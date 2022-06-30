@@ -81,7 +81,7 @@ impl Account {
             );
             self.available -= amount;
         } else {
-            log::error!(
+            log::warn!(
                 "Could not withdraw. {} available and {amount} requested",
                 self.available
             );

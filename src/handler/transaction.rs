@@ -32,14 +32,13 @@ async fn process(
             crate::TransactionType::ChargeBack => charge_back(&mut data, message),
         };
     }
-    //TODO consider passing only reference
     let records: Vec<AccountSummary> = data
         .drain()
         .map(|record| AccountSummary {
             client: record.0,
-            available: record.1.available,
-            held: record.1.held,
-            total: record.1.total(),
+            available: record.1.available.round_dp(4),
+            held: record.1.held.round_dp(4),
+            total: record.1.total().round_dp(4),
             locked: record.1.is_locked,
         })
         .collect();

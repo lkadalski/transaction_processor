@@ -14,7 +14,7 @@ async fn main() -> Result<()> {
     .await
     {
         log::error!("Error occured during processing: {err}");
-        std::process::exit(1)
+        std::process::exit(exitcode::Usage)
     }
     Ok(())
 }
