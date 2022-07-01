@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     if let Err(err) = handler::output::handle(
-        handler::transaction::handle(handler::input::handle(input).await?).await?,
+        handler::transaction::handle(handler::input::handle(input).await).await,
     )
     .await
     {

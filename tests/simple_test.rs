@@ -33,7 +33,7 @@ pub fn advance_case_test() -> Result<(), Box<dyn std::error::Error>> {
         .arg("test_data/03.csv")
         .assert()
         .stdout(predicate::str::starts_with(
-            "client,available,held,total,locked\n1,0.0000,0.0000,0.0000,false\n2,308.8503,0.0000,308.8503,false\n3,0.0000,0.0000,0.0000,true\n",
+            "client,available,held,total,locked\n1,0.0000,0.0000,0.0000,true\n2,308.8503,0.0000,308.8503,false\n3,0.0000,0.0000,0.0000,true\n",
         ));
 
     Ok(())

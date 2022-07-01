@@ -1,13 +1,9 @@
-use crate::{handler::Account, handler::DataSource, ClientId};
-use anyhow::Result;
-
+use super::AccountSummary;
+use crate::{handler::Account, handler::DataSource, ClientId, Transaction};
+use anyhow::{bail, Result};
 use tokio::sync::{mpsc::Receiver, oneshot};
 
-use super::AccountSummary;
-
-pub async fn handle(
-    input: Receiver<crate::Transaction>,
-) -> Result<oneshot::Receiver<Vec<AccountSummary>>> {
+pub async fn handle(input: Receiver<crate::Transaction>) -> oneshot::Receiver<Vec<AccountSummary>> {
     let (tx, rx) = oneshot::channel();
     tokio::spawn(async move {
         if let Err(err) = process(input, tx).await {
@@ -15,7 +11,7 @@ pub async fn handle(
             std::process::exit(1)
         }
     });
-    Ok(rx)
+    rx
 }
 
 async fn process(
@@ -25,11 +21,11 @@ async fn process(
     let mut data = DataSource::new();
     while let Some(message) = queue.recv().await {
         match message.tx_type {
-            crate::TransactionType::Deposit => deposit(&mut data, message),
-            crate::TransactionType::Withdrawal => withdrawal(&mut data, message),
-            crate::TransactionType::Dispute => dispute(&mut data, message),
-            crate::TransactionType::Resolve => resolve(&mut data, message),
-            crate::TransactionType::ChargeBack => charge_back(&mut data, message),
+            crate::TransactionType::Deposit => deposit(&mut data, &message),
+            crate::TransactionType::Withdrawal => withdrawal(&mut data, &message),
+            crate::TransactionType::Dispute => dispute(&mut data, &message),
+            crate::TransactionType::Resolve => resolve(&mut data, &message),
+            crate::TransactionType::ChargeBack => charge_back(&mut data, &message),
         };
     }
     let records: Vec<AccountSummary> = data
@@ -42,16 +38,16 @@ async fn process(
             locked: record.1.is_locked,
         })
         .collect();
-    drop(data);
     log::info!("Total {} records", records.len());
-    tx.send(records).unwrap();
+
+    // Possibly handle those data somehow differently
+    if let Err(_err) = tx.send(records) {
+        bail!("Could not push records to output handler")
+    }
     Ok(())
 }
 
-fn charge_back(
-    data: &mut std::collections::HashMap<ClientId, Account>,
-    transaction: crate::Transaction,
-) {
+fn charge_back(data: &mut std::collections::HashMap<ClientId, Account>, transaction: &Transaction) {
     log::info!("Doing charge back!");
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.charge_back(transaction);
@@ -60,51 +56,39 @@ fn charge_back(
     }
 }
 
-fn resolve(
-    data: &mut std::collections::HashMap<ClientId, Account>,
-    transaction: crate::Transaction,
-) {
+fn resolve(data: &mut std::collections::HashMap<ClientId, Account>, transaction: &Transaction) {
     log::info!("Doing resolve!");
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.resolve(transaction);
     }
 }
 
-fn dispute(
-    data: &mut std::collections::HashMap<ClientId, Account>,
-    transaction: crate::Transaction,
-) {
+fn dispute(data: &mut std::collections::HashMap<ClientId, Account>, transaction: &Transaction) {
     log::info!("Doing dispute!");
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.dispute(transaction);
     }
 }
 
-fn withdrawal(
-    data: &mut std::collections::HashMap<ClientId, Account>,
-    transaction: crate::Transaction,
-) {
+fn withdrawal(data: &mut std::collections::HashMap<ClientId, Account>, transaction: &Transaction) {
     log::info!("Doing withdrawal!");
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.withdrawal(transaction);
     } else {
         let client = transaction.client_id;
-        let mut account = Account::new();
+        let mut account = Account::default();
         account.withdrawal(transaction);
         data.insert(client, account);
     }
 }
 
-fn deposit(
-    data: &mut std::collections::HashMap<ClientId, Account>,
-    transaction: crate::Transaction,
-) {
+fn deposit(data: &mut std::collections::HashMap<ClientId, Account>, transaction: &Transaction) {
     log::info!("Doing deposit!");
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.deposit(transaction);
     } else {
         let client = transaction.client_id;
-        let mut account = Account::new();
+        let mut account = Account::default();
         account.deposit(transaction);
         data.insert(client, account);
     }

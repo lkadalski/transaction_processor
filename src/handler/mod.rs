@@ -52,8 +52,8 @@ impl AccountTransaction {
         }
     }
 }
-impl Account {
-    pub fn new() -> Self {
+impl Default for Account {
+    fn default() -> Self {
         Account {
             available: Decimal::ZERO,
             held: Decimal::ZERO,
@@ -61,10 +61,12 @@ impl Account {
             transactions: HashMap::new(),
         }
     }
+}
+impl Account {
     pub fn total(&self) -> Decimal {
         self.available + self.held
     }
-    pub fn deposit(&mut self, transaction: Transaction) {
+    pub fn deposit(&mut self, transaction: &Transaction) {
         if self.is_locked {
             log::warn!(
                 "Trying to do deposit on frozen accountId {}. Reject!",
@@ -72,17 +74,20 @@ impl Account {
             );
             return;
         }
-        let amount = transaction.amount.unwrap();
-        if let Err(error) = self.transactions.try_insert(
-            transaction.transaction_id,
-            AccountTransaction::new(amount, AccountTransactionType::Deposit),
-        ) {
-            log::warn!("Trying to replace transaction {transaction:?}. Rejecting. {error}");
-            return;
+        if let Some(amount) = transaction.amount {
+            if let Err(error) = self.transactions.try_insert(
+                transaction.transaction_id,
+                AccountTransaction::new(amount, AccountTransactionType::Deposit),
+            ) {
+                log::warn!("Trying to replace transaction {transaction:?}. Rejecting. {error}");
+                return;
+            }
+            self.available += amount;
+        } else {
+            log::error!("There is no amount for deposit transaction. Rejecting {transaction:?}");
         }
-        self.available += amount;
     }
-    pub fn withdrawal(&mut self, transaction: Transaction) {
+    pub fn withdrawal(&mut self, transaction: &Transaction) {
         if self.is_locked {
             log::warn!(
                 "Trying to do withdrawal on frozen accountId {}. Reject!",
@@ -90,47 +95,49 @@ impl Account {
             );
             return;
         }
-        let amount = transaction.amount.unwrap();
-        if let Err(error) = self.transactions.try_insert(
-            transaction.transaction_id,
-            AccountTransaction::new(amount, AccountTransactionType::Withdrawal),
-        ) {
-            log::warn!("Trying to replace transaction {transaction:?}. Rejecting. {error}");
-            return;
-        };
+        if let Some(amount) = transaction.amount {
+            if let Err(error) = self.transactions.try_insert(
+                transaction.transaction_id,
+                AccountTransaction::new(amount, AccountTransactionType::Withdrawal),
+            ) {
+                log::warn!("Trying to replace transaction {transaction:?}. Rejecting. {error}");
+                return;
+            };
 
-        if self.available >= amount {
-            self.available -= amount;
+            if self.available >= amount {
+                self.available -= amount;
+            } else {
+                log::warn!(
+                    "Could not withdraw. {} available and {amount} requested",
+                    self.available
+                );
+            }
         } else {
-            log::warn!(
-                "Could not withdraw. {} available and {amount} requested",
-                self.available
-            );
+            log::error!("There is no amount for withdrawal transaction. Rejecting {transaction:?}");
         }
     }
-    pub fn dispute(&mut self, transaction: Transaction) {
+    pub fn dispute(&mut self, transaction: &Transaction) {
         if let Some(disputed) = self.transactions.get_mut(&transaction.transaction_id) {
             log::info!("Doing dispute {disputed:?}");
             if disputed.state == AccountTransactionState::Disputed {
                 log::warn!("Transaction is alread in disputed state {disputed:?}");
                 return;
-            } else {
-                match disputed.tx_type {
-                    AccountTransactionType::Deposit => {
-                        self.available -= disputed.amount;
-                        self.held += disputed.amount;
-                    }
-                    AccountTransactionType::Withdrawal => {
-                        self.held += disputed.amount;
-                    }
-                }
-                disputed.state = AccountTransactionState::Disputed;
             }
+            match disputed.tx_type {
+                AccountTransactionType::Deposit => {
+                    self.available -= disputed.amount;
+                    self.held += disputed.amount;
+                }
+                AccountTransactionType::Withdrawal => {
+                    self.held += disputed.amount;
+                }
+            }
+            disputed.state = AccountTransactionState::Disputed;
         } else {
             log::warn!("There is no such transaction. {transaction:?} Failing to dispute.");
         }
     }
-    pub fn resolve(&mut self, transaction: Transaction) {
+    pub fn resolve(&mut self, transaction: &Transaction) {
         if let Some(to_resolve) = self.transactions.get_mut(&transaction.transaction_id) {
             log::info!("Resolving transaction {to_resolve:?}");
             if to_resolve.state == AccountTransactionState::Disputed {
@@ -147,11 +154,10 @@ impl Account {
                 to_resolve.state = AccountTransactionState::Normal;
             } else {
                 log::warn!("There is no such transaction. {transaction:?} Failing to resolve.");
-                return;
             }
         }
     }
-    pub fn charge_back(&mut self, transaction: Transaction) {
+    pub fn charge_back(&mut self, transaction: &Transaction) {
         log::info!("Charging back transaction");
         if let Some(to_charge_back) = self.transactions.get_mut(&transaction.transaction_id) {
             if to_charge_back.state == AccountTransactionState::Disputed {
@@ -159,7 +165,7 @@ impl Account {
                 self.held -= to_charge_back.amount;
                 self.is_locked = true;
             } else {
-                log::warn!("Transaction is not in Disputed State but in {to_charge_back:?}")
+                log::warn!("Transaction is not in Disputed State but in {to_charge_back:?}");
             }
         }
     }
@@ -179,8 +185,8 @@ mod tests {
             transaction_id: 1,
             amount: Some(Decimal::ONE_HUNDRED),
         };
-        let mut account = Account::new();
-        account.deposit(deposit);
+        let mut account = Account::default();
+        account.deposit(&deposit);
         assert_eq!(account.total(), Decimal::ONE_HUNDRED);
         assert_eq!(account.available, Decimal::ONE_HUNDRED);
         let withdraw = Transaction {
@@ -189,7 +195,7 @@ mod tests {
             transaction_id: 2,
             amount: Some(Decimal::ONE_HUNDRED),
         };
-        account.withdrawal(withdraw);
+        account.withdrawal(&withdraw);
         assert_eq!(account.available, Decimal::ZERO);
         assert_eq!(account.total(), Decimal::ZERO);
     }
@@ -203,8 +209,8 @@ mod tests {
             transaction_id: 1,
             amount: Some(Decimal::ONE_HUNDRED),
         };
-        let mut account = Account::new();
-        account.deposit(deposit);
+        let mut account = Account::default();
+        account.deposit(&deposit);
         assert_eq!(account.available, Decimal::ONE_HUNDRED);
 
         let withdraw = Transaction {
@@ -213,7 +219,7 @@ mod tests {
             transaction_id: 2,
             amount: Some(Decimal::new(70, 0)),
         };
-        account.withdrawal(withdraw);
+        account.withdrawal(&withdraw);
         assert_eq!(account.available, Decimal::new(30, 0));
 
         let dispute = Transaction {
@@ -222,7 +228,7 @@ mod tests {
             transaction_id: 2,
             amount: None,
         };
-        account.dispute(dispute);
+        account.dispute(&dispute);
         assert_eq!(account.available, Decimal::new(30, 0));
         assert_eq!(account.held, Decimal::new(70, 0));
         assert_eq!(account.total(), Decimal::new(100, 0));
@@ -233,7 +239,7 @@ mod tests {
             transaction_id: 2,
             amount: None,
         };
-        account.resolve(resolve);
+        account.resolve(&resolve);
         assert_eq!(account.available, Decimal::new(100, 0));
         assert_eq!(account.held, Decimal::new(0, 0));
         assert_eq!(account.total(), Decimal::new(100, 0));
@@ -248,8 +254,8 @@ mod tests {
             transaction_id: 1,
             amount: Some(Decimal::ONE_HUNDRED),
         };
-        let mut account = Account::new();
-        account.deposit(deposit);
+        let mut account = Account::default();
+        account.deposit(&deposit);
         assert_eq!(account.available, Decimal::ONE_HUNDRED);
 
         let withdraw = Transaction {
@@ -258,7 +264,7 @@ mod tests {
             transaction_id: 2,
             amount: Some(Decimal::new(70, 0)),
         };
-        account.withdrawal(withdraw);
+        account.withdrawal(&withdraw);
         assert_eq!(account.available, Decimal::new(30, 0));
 
         let dispute = Transaction {
@@ -267,7 +273,7 @@ mod tests {
             transaction_id: 2,
             amount: None,
         };
-        account.dispute(dispute);
+        account.dispute(&dispute);
         assert_eq!(account.available, Decimal::new(30, 0));
         assert_eq!(account.held, Decimal::new(70, 0));
         assert_eq!(account.total(), Decimal::new(100, 0));
@@ -278,7 +284,7 @@ mod tests {
             transaction_id: 2,
             amount: None,
         };
-        account.charge_back(charge_back);
+        account.charge_back(&charge_back);
         assert_eq!(account.available, Decimal::new(30, 0));
         assert_eq!(account.held, Decimal::new(0, 0));
         assert_eq!(account.total(), Decimal::new(30, 0));

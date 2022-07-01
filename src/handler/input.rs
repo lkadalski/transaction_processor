@@ -2,13 +2,8 @@ use crate::Transaction;
 use anyhow::Result;
 use futures::stream::StreamExt;
 use tokio::sync::mpsc::{self, Sender};
-/// .
-/// Handle files or stdin
-///
-/// # Errors
-///
-/// This function will return an error if File not exists or could not deserialize record.
-pub async fn handle(input: Option<String>) -> Result<mpsc::Receiver<Transaction>> {
+
+pub async fn handle(input: Option<String>) -> mpsc::Receiver<Transaction> {
     let (tx, rx) = mpsc::channel(1000);
     tokio::spawn(async move {
         if let Err(err) = process(input, tx).await {
@@ -16,7 +11,7 @@ pub async fn handle(input: Option<String>) -> Result<mpsc::Receiver<Transaction>
             std::process::exit(1);
         }
     });
-    Ok(rx)
+    rx
 }
 
 async fn process(input: Option<String>, tx: Sender<Transaction>) -> Result<()> {
