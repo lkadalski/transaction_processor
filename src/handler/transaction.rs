@@ -58,7 +58,6 @@ fn charge_back(
     } else {
         log::error!("There is not client with {transaction:?}");
     }
-    // data.insert(message.client, message);
 }
 
 fn resolve(
@@ -69,7 +68,6 @@ fn resolve(
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.resolve(transaction);
     }
-    // data.insert(message.client, message);
 }
 
 fn dispute(
@@ -80,7 +78,6 @@ fn dispute(
     if let Some(account) = data.get_mut(&transaction.client_id) {
         account.dispute(transaction);
     }
-    // data.insert(message.client, message);
 }
 
 fn withdrawal(

@@ -25,16 +25,9 @@ To save computer resources in second step an async runtime should be instantiate
 Two tasks should be created: FileReader, RecordProcessor and DataPrinter?(async-csv).
 Data should be keep in HashMap, with a Key as accountId.
 
-
-`TODO` -> Verify if typical stack is able to hold u32::MAX records in memory
-
 * Prepare typical data set(or script which will generate those)
 * Provide automated tests
 * Provide unit tests
-
-### Secondary CLI program
-
-This program should generate data(fake transactions) to provide an input for `default` one. 
 
 ### Example usage:
 
@@ -51,7 +44,7 @@ client,available,held,total,locked
 
 Main code should be wrapped with `async` runtime and utilise Async Pipeline design pattern. <br>
 There should be such components:
-* `FileReader` - which reads file line by line and pushes record to channel
+* `InputReader` - which reads file line by line and pushes record to channel
 * `RecordProcessor` - which process data and updates specific data in DataStorage. 
-* `DataPrinter` - which prints the data record by record in an async way
+* `DataPrinter` - which prints the data record by record in an async way after all processing is finished
 
