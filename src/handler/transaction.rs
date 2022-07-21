@@ -37,6 +37,11 @@ async fn process(
             total: record.1.total().round_dp(4),
             locked: record.1.is_locked,
         })
+        .map(|mut summary| {
+            summary.available.rescale(4);
+            summary.held.rescale(4);
+            summary
+        })
         .collect();
     log::info!("Total {} records", records.len());
 

@@ -12,8 +12,11 @@ pub mod transaction;
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct AccountSummary {
     pub client: ClientId,
+    #[serde(with = "rust_decimal::serde::str")]
     pub available: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
     pub held: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
     pub total: Decimal,
     pub locked: bool,
 }
@@ -75,13 +78,18 @@ impl Account {
             return;
         }
         if let Some(amount) = transaction.amount {
-            if let Err(error) = self.transactions.try_insert(
-                transaction.transaction_id,
-                AccountTransaction::new(amount, AccountTransactionType::Deposit),
-            ) {
-                log::warn!("Trying to replace transaction {transaction:?}. Rejecting. {error}");
+            if amount < Decimal::ZERO {
+                log::warn!("Denying negative ammount {amount} and tx {transaction:?}");
                 return;
             }
+            if let Some(tx) = self.transactions.get_mut(&transaction.transaction_id) {
+                log::warn!("Trying to replace transaction {tx:?} with {transaction:?}. Rejecting.");
+                return;
+            }
+            self.transactions.insert(
+                transaction.transaction_id,
+                AccountTransaction::new(amount, AccountTransactionType::Deposit),
+            );
             self.available += amount;
         } else {
             log::error!("There is no amount for deposit transaction. Rejecting {transaction:?}");
@@ -96,14 +104,18 @@ impl Account {
             return;
         }
         if let Some(amount) = transaction.amount {
-            if let Err(error) = self.transactions.try_insert(
-                transaction.transaction_id,
-                AccountTransaction::new(amount, AccountTransactionType::Withdrawal),
-            ) {
-                log::warn!("Trying to replace transaction {transaction:?}. Rejecting. {error}");
+            if amount < Decimal::ZERO {
+                log::warn!("Denying negative ammount {amount} and tx {transaction:?}");
+                return;
+            }
+            if let Some(tx) = self.transactions.get_mut(&transaction.transaction_id) {
+                log::warn!("Trying to replace transaction {tx:?} with {transaction:?}. Rejecting.");
                 return;
             };
-
+            self.transactions.insert(
+                transaction.transaction_id,
+                AccountTransaction::new(amount, AccountTransactionType::Withdrawal),
+            );
             if self.available >= amount {
                 self.available -= amount;
             } else {
